@@ -9,13 +9,13 @@ require_once 'vendor/autoload.php';
 // registered our app.
 
 $provider = new \League\OAuth2\Client\Provider\GenericProvider([
-    'clientId' => 'd3e72ffd7ae784562e04',
-    'clientSecret' => 'deaf0d35384340f9318957a5fc7f17b0023c4f6f',
-    'redirectUri' => 'http://localhost/oauth2/Oauth_client/index.php',
-    'urlAuthorize' => 'https://github.com/login/oauth/authorize',
+    'clientId' => '1',
+    'clientSecret' => 'HX6S745xVauIzlDGM4VZsVVeGPICRORg',
+    'redirectUri' => 'http://localhost/oauth/Oauth_client/index.php',
+    'urlAuthorize' => 'http://localhost/oauth/oauth_server/authorisation_server/authorize',
     'scope' => '(no scope)',
-    'urlAccessToken' => 'https://github.com/login/oauth/access_token',
-    'urlResourceOwnerDetails' => 'https://github.com'
+    'urlAccessToken' => 'http://localhost/oauth/oauth_server/authorisation_server/access_token',
+    'urlResourceOwnerDetails' => 'http://localhost/oauth/oauth_server/resource_server'
 ]);
 
 session_start();
