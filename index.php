@@ -13,7 +13,7 @@ $provider = new \League\OAuth2\Client\Provider\GenericProvider([
     'clientSecret' => 'd589f041fd4435e2088c942aa2caf41d', 
     'redirectUri' => 'http://localhost/oauth/Oauth_client/index.php',
     'urlAuthorize' => 'http://localhost/oauth/oauth_server/authorisation_server/authorize',
-    'scope' => '(no scope)',
+    'scope' => 'read',
     'urlAccessToken' => 'http://localhost/oauth/oauth_server/authorisation_server/access_token',
     'urlResourceOwnerDetails' => 'http://localhost/oauth/oauth_server/resource_server'
 ]);
