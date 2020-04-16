@@ -11,7 +11,7 @@ require_once 'vendor/autoload.php';
 $provider = new \League\OAuth2\Client\Provider\GenericProvider([
     'clientId' => '3fedffd1001543845b28d28b1e51397d', //advice https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/ // used 'openssl rand -hex 16' to generate id and secret 
     'clientSecret' => 'd589f041fd4435e2088c942aa2caf41d', 
-    'redirectUri' => 'http://localhost/oauth/Oauth_client/index.php',
+    'redirectUri' => 'http://localhost/oauth/oauth_client/success.html',
     'urlAuthorize' => 'http://localhost/oauth/oauth_server/authorisation_server/authorize',
     'scope' => 'read',
     'urlAccessToken' => 'http://localhost/oauth/oauth_server/authorisation_server/access_token',
