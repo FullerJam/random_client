@@ -1,6 +1,6 @@
 <?php
 // Load our Composer-installed dependencies
-require_once 'vendor/autoload.php'; 
+require_once 'vendor/autoload.php';
 
 // Create an object representing the provider.
 // Note how we have to provide our client ID and secret, and also
@@ -9,79 +9,115 @@ require_once 'vendor/autoload.php';
 // registered our app.
 
 $provider = new \League\OAuth2\Client\Provider\GenericProvider([
-    'clientId' => '3fedffd1001543845b28d28b1e51397d', //advice https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/ // used 'openssl rand -hex 16' to generate id and secret 
-    'clientSecret' => 'd589f041fd4435e2088c942aa2caf41d', 
-    'redirectUri' => 'http://localhost/oauth/oauth_client/success.html',
+    'clientId' => '3fedffd1001543845b28d28b1e51397d', //advice https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/ // used 'openssl rand -hex 32' to generate id and secret
+    'clientSecret' => '0727ff911e1f4195eebd3185aed08c0a27d000c55521d7066d17c1414108eeb5',
+    'redirectUri' => 'http://localhost/oauth/oauth_client/index.php',
     'urlAuthorize' => 'http://localhost/oauth/oauth_server/authorisation_server/authorize',
     'scope' => 'read',
     'urlAccessToken' => 'http://localhost/oauth/oauth_server/authorisation_server/access_token',
-    'urlResourceOwnerDetails' => 'http://localhost/oauth/oauth_server/resource_server'
+    'urlResourceOwnerDetails' => 'http://localhost/oauth/oauth_server/resource_server',
 ]);
 
 session_start();
 
-// If an authorisation code was NOT supplied as a query string..
-if(!isset($_GET["code"])) {
+// If we don't have an authorization code then get one
+if (!isset($_GET["code"])) {
 
-    // Get the full URL for the /authorize endpoint
+    // Fetch the authorization URL from the provider; this returns the
+    // urlAuthorize option and generates and applies any necessary parameters
+    // (e.g. state).
     $authUrl = $provider->getAuthorizationUrl();
-    
-    // Get the state (see below)
+
+    // Get the state generated for you and store it to the session.
     $_SESSION['state'] = $provider->getState();
-    
-    // Redirect to our /authorize endpoint
+
+    // Redirect the user to the authorization URL.
     header("Location: $authUrl");
-} // Check that the state sent back from the server is the same as the original (see above)
-elseif(empty($_GET['state']) || (isset($_SESSION['state']) && $_GET['state']!=$_SESSION['state'])) {
-    unset($_SESSION['state']);
-    echo "Possible security violation detected - quitting";
+} // Check given state against previously stored one to mitigate CSRF attack
+elseif (empty($_GET['state']) || (isset($_SESSION['state']) && $_GET['state'] != $_SESSION['state'])) {
+    if (isset($_SESSION['oauth2state'])) {
+        unset($_SESSION['oauth2state']);
+    }
+
+    exit('Invalid state');
 } else {
-    
-?>
+
+    ?>
 <!DOCTYPE html>
 <html>
 <head>
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 <style>
-body {
-    max-width:1000px;
-    margin:0 auto;
-    font-family: helvetica, arial, sans-serif;
+
+.row{
+    display:flex;
+    justify-content:center;
+    flex-direction:column;
 }
+
+.imgRow{
+    align-items:center;
+}
+
+.wrapper{
+    height:80vh;
+    margin: 0 auto;
+    max-width:500px;
+}
+span{
+    word-break: break-all;
+}
+
 </style>
 </head>
 <body>
-<h1>Github Oauth2 demo client</h1>
+<div class="container">
+<div class="row">
+<div class="wrapper mt-5">
 
-<p>This is an example OAuth Client, using githubs API.</p>
+<div class="col-12 imgRow">
+<img class="img-responsive mb-5" src="./circle-cropped.png" alt="oauth2logo">
+</div>
+
+<div class="col-12">
+<h1>Oauth client</h1>
 
 <?php
-echo "<p>We have an authorisation code.</p>";
-try {
-    if(!isset($_SESSION["accessToken"])) {
-        echo "No saved access token, getting one <br />";
-        $accessToken = $provider->getAccessToken('authorization_code',
-            ["code"=>$_GET["code"]]);
-        $_SESSION["accessToken"] = $accessToken;
-    } else {
-        echo "We already have an access token, using that<br />";
-        $accessToken = $_SESSION["accessToken"];
+    try {
+        if (!isset($_SESSION["accessToken"])) {
+            echo "No saved access token, getting one <br />";
+            $accessToken = $provider->getAccessToken('authorization_code', ["code" => $_GET["code"]]);
+            echo '<span>Access Token: ' . $accessToken->getToken() . "<br></span>";
+            $_SESSION["accessToken"] = $accessToken;
+        } else {
+            $accessToken = $_SESSION["accessToken"];
+            echo "<span>Token already set<br/><br/><span style='font-weight:bold;'>Access Token:</span><br/>".$accessToken."</span><br/><br/>";
+        }
+        echo "<span style='font-weight:bold;'>Token Expires " .date('M d Y H:i:s',$accessToken->getExpires()). "</span>";
+        $request = $provider->getAuthenticatedRequest(
+            'POST',
+            'http://localhost/oauth/oauth_server/resource_server/read',
+            $accessToken
+        );
+        echo "<h4 class='mt-2' style='color:green;'>Making a request to the Resource server API</h4>";
+        $client = new GuzzleHttp\Client();
+        $response = json_decode((string) $client->send($request)->getBody());
+        if(is_object($reponse)){
+            echo "User email from API: {$response->email}";
+            echo "Response from API: {$response->msg}";
+        }else {
+            throw new Exception("Response from server was not an object");
+        }
+    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $error) {
+        echo "Exception: {".$error->getMessage()."}";
     }
-    echo "Has access token expired? ".($accessToken->hasExpired() ? 'yes': 'no')."<br />";
+    ?>
+  
 
-    $request = $provider->getAuthenticatedRequest(
-        'POST',
-        'https://github.com/login/oauth/access_token',
-        $accessToken
-    );
-    echo "<h2>Making a request to the github API</h2>";
-    echo "<p>User needs to have granted upload permission for it to work, i.e. token needs 'upload' scope.</p>";
-    $client = new GuzzleHttp\Client();
-    $response = json_decode((string)$client->send($request)->getBody());
-    echo "Response from API: <strong>{$response->msg}</strong>";
-} catch(\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
-    echo "Exception: {$e->getMessage()}";
-}
-?>
+</div>
+</div>
+</div>
+</div>
 </body>
 </html>
 <?php
