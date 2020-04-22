@@ -1,4 +1,5 @@
 <?php
+error_reporting(E_ALL & ~E_NOTICE);
 // Load our Composer-installed dependencies
 require_once 'vendor/autoload.php';
 
@@ -62,7 +63,7 @@ elseif (empty($_GET['state']) || (isset($_SESSION['state']) && $_GET['state'] !=
 .wrapper{
     height:80vh;
     margin: 0 auto;
-    max-width:500px;
+    max-width:650px;
 }
 span{
     word-break: break-all;
@@ -83,7 +84,7 @@ span{
 <h1>Oauth client</h1>
 
 <?php
-    try {
+try {
         if (!isset($_SESSION["accessToken"])) {
             echo "No saved access token, getting one <br />";
             $accessToken = $provider->getAccessToken('authorization_code', ["code" => $_GET["code"]]);
@@ -91,28 +92,34 @@ span{
             $_SESSION["accessToken"] = $accessToken;
         } else {
             $accessToken = $_SESSION["accessToken"];
-            echo "<span>Token already set<br/><br/><span style='font-weight:bold;'>Access Token:</span><br/>".$accessToken."</span><br/><br/>";
+            echo "<span>Token already set<br/><br/><span style='font-weight:bold;'>Access Token:</span><br/>" . $accessToken . "</span><br/><br/>";
         }
-        echo "<span style='font-weight:bold;'>Token Expires " .date('M d Y H:i:s',$accessToken->getExpires()). "</span>";
+        echo "<span style='font-weight:bold;'>Token Expires " . date('M d Y H:i:s', $accessToken->getExpires()) . "</span>";
         $request = $provider->getAuthenticatedRequest(
             'POST',
             'http://localhost/oauth/oauth_server/resource_server/read',
             $accessToken
         );
-        echo "<h4 class='mt-2' style='color:green;'>Making a request to the Resource server API</h4>";
+
+        echo "<h4 class='mt-2' style='color:green;'>Making a request to the Resource server API</h4><br/><p>Request: {" . (string) $request->getBody() . "}</p>";
         $client = new GuzzleHttp\Client();
         $response = json_decode((string) $client->send($request)->getBody());
-        if(is_object($reponse)){
-            echo "User email from API: {$response->email}";
-            echo "Response from API: {$response->msg}";
-        }else {
-            throw new Exception("Response from server was not an object");
-        }
-    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $error) {
-        echo "Exception: {".$error->getMessage()."}";
+        echo "Response " . (string) $client->send($request)->getBody();//this showed error in full, previously truncated in catch.. access token was being denied.
+        var_dump($response);
+        echo "User email from API: {$response->email}";
+        // echo "Response from API: {$response->msg}";
+
+    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+        
+        echo "league exception".$e->getMessage();
+
+    } catch (\GuzzleHttp\Exception\ClientException $e) {
+
+        echo "guzzle exception".$e->getResponse()->getBody()->getContents();
+
     }
     ?>
-  
+  <!-- \League\OAuth2\Client\Provider\Exception\IdentityProviderException -->
 
 </div>
 </div>
