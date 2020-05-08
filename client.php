@@ -106,27 +106,27 @@ try {
         if ($response) {
             $msgRequest = $provider->getAuthenticatedRequest(
                 'POST',
-                'http://localhost/oauth/oauth_server/resource_server/messages',
+                'http://localhost/oauth/oauth_server/resource_server/get_messages',
                 $accessToken
             );
             $msgResponse = json_decode((string) $client->send($msgRequest)->getBody());
             echo "
             <div class='row mt-2'>
             <div class='col-6 text-success'><span>User Authenticated -> $response->email </div>
-            <div class='col-6 text-warning text-right'>Token Expires " . date('M d Y H:i:s', $accessToken->getExpires())."
+            <div class='col-6 text-warning text-right'>Token Expires " . date('M d Y H:i:s', $accessToken->getExpires()) . "
             </div>
             </div>
             <div class='row'>
             <div class='col-12'>
-            <div class='msg-board-wrapper mt-5 mb-5'>
+            <div class='msg-board-wrapper mt-5 mb-5 p-1'>
             ";
             // echo "msgResponse: ".var_dump($msgResponse);
-            if($msgResponse){
-                foreach($msgResponse as $msg){ "
-                <div class='col-12'>
-                <div class='row justify-content-between'>
+            if ($msgResponse) {
+                foreach ($msgResponse as $msg) {echo "
+                <div class='col-12 p-3'>
+                <div class='row justify-content-between pb-2 text-info'>
                     <div class='user'>
-                        $msg->email
+                        " . preg_split("/[@]/", $msg->email)[0] . "
                     </div>
                     <div class='time'>
                         $msg->time
@@ -139,24 +139,40 @@ try {
                 </div>
                 </div>
                 ";
-                };
+                }
+                ;
+
+                
             };
             echo "
-            </div>
-            </div>
-            </div>
-            <div class='row'>
-            <div class='col-12'>
-            <form action='' method='POST'>
-            <div class='form-group'>
-            <label class='w-100'for='message'>Write a message for the OAuth msgBoard</label>
-            <textarea class='w-100 form-control' name='message' id='' rows='4'></textarea>
-            </div>
-            </form>
-            </div>
-            </div>
-            ";
+        </div>
+        </div>
+        </div>
+        <div class='row'>
+        <div class='col-12'>
+        <form method='POST'>
+        <div class='form-group'>
+        <label class='w-100'for='message'>Write a message for the OAuth msgBoard</label>
+        <textarea class='w-100 form-control' name='message[]' rows='3'></textarea>
+        <input type='submit' name='message'>
+        </div>
+        </form>
+        </div>
+        </div>
+        "; //name of textarea declared as array 'message[]'
+            if (isset($_POST['message'])) {
+                $msgArray = [$_POST['message']];
+                // echo "textarea msg: ".$_POST['message'];
+                $setMsg = $provider->getAuthenticatedRequest(
+                    'POST',
+                    'http://localhost/oauth/oauth_server/resource_server/set_message',
+                    $accessToken,
+                    $msgArray
+                );
+                $client->send($setMsg);
 
+            }
+            ;
 
             // echo "<div class='row'><div class='col-12'>Response " . (string) $client->send($request)->getBody(); //this showed error in full, previously truncated in catch.. access token was being denied by resource server.
             // var_dump($response);
