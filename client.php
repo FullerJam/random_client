@@ -49,6 +49,7 @@ elseif (empty($_GET['state']) || (isset($_SESSION['state']) && $_GET['state'] !=
 <head>
 <title>OAuth Forums</title>
 <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 <style>
 
 .wrapper{
@@ -75,17 +76,22 @@ img{
 
 <div class="row">
     <div class="col-12 d-flex justify-content-between align-items-center">
-        <h4>Oauth authenticated msgBoard</h4>
+        <h2 style="font-family: 'Pacifico', cursive;">Oauth authenticated msgBoard</h2>
         <img class="img-responsive" src="./circle-cropped.png" alt="oauth2logo">
     </div>
+    <div class="col-12 d-flex flex-row-reverse mt-2"><form method="POST" action="client.php" ><input type="hidden" name="logout"><button type="submit">Logout</button></form></div>
 </div>
 
 
 
 <?php
+if (isset($_POST['logout'])) {
+    session_destroy();
+}
+
 try {
         if (!isset($_SESSION["accessToken"])) {
-            //    No saved access token, getting one
+            //  No saved access token, getting one
             $accessToken = $provider->getAccessToken('authorization_code', ["code" => $_GET["code"]]);
             $_SESSION["accessToken"] = $accessToken;
         } else {
@@ -102,7 +108,7 @@ try {
         $client = new GuzzleHttp\Client();
         //Making a request to the Resource server API using access token
         $response = json_decode((string) $client->send($request)->getBody());
-
+        var_dump($response);
         if ($response) {
             $msgRequest = $provider->getAuthenticatedRequest(
                 'POST',
@@ -129,7 +135,7 @@ try {
                         " . preg_split("/[@]/", $msg->email)[0] . "
                     </div>
                     <div class='time'>
-                        $msg->time
+                        " . DateTime::createFromFormat('U', $msg->time)->format('Y-m-d H:i:s') . /*convert time stamp to date & convert format for string*/"
                     </div>
                 </div>
                 <div class='row'>
@@ -142,8 +148,8 @@ try {
                 }
                 ;
 
-                
-            };
+            }
+            ;
             echo "
         </div>
         </div>
@@ -152,23 +158,25 @@ try {
         <div class='col-12'>
         <form method='POST'>
         <div class='form-group'>
-        <label class='w-100'for='message'>Write a message for the OAuth msgBoard</label>
-        <textarea class='w-100 form-control' name='message[]' rows='3'></textarea>
-        <input type='submit' name='message'>
+        <label class='w-100'>Write a message for the OAuth msgBoard</label>
+        <textarea class='w-100 form-control' id='message' name='message' rows='3' required></textarea>
+        <input class='mt-2' type='submit'>
         </div>
         </form>
         </div>
         </div>
         "; //name of textarea declared as array 'message[]'
             if (isset($_POST['message'])) {
-                $msgArray = [$_POST['message']];
-                // echo "textarea msg: ".$_POST['message'];
+                $msg = $_POST['message'];
+                echo $msg;
+                // var_dump($msgArray);
                 $setMsg = $provider->getAuthenticatedRequest(
                     'POST',
                     'http://localhost/oauth/oauth_server/resource_server/set_message',
                     $accessToken,
-                    $msgArray
+                    ['form_fields' => ['message' => $msg]]
                 );
+                var_dump($setMsg);
                 $client->send($setMsg);
 
             }
@@ -176,6 +184,8 @@ try {
 
             // echo "<div class='row'><div class='col-12'>Response " . (string) $client->send($request)->getBody(); //this showed error in full, previously truncated in catch.. access token was being denied by resource server.
             // var_dump($response);
+        } else {
+            echo "Something went wrong";
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
 
