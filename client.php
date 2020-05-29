@@ -21,8 +21,13 @@ $provider = new \League\OAuth2\Client\Provider\GenericProvider([
 
 session_start();
 
+if (isset($_POST['logout'])) {
+    session_destroy();
+    //header to initial login page
+    header('Location: http://localhost/oauth/random_client/index.php');
+} elseif (!isset($_GET["code"])) {
 // If we don't have an authorization code then get one
-if (!isset($_GET["code"])) {
+
 
     // Fetch the authorization URL from the provider; this returns the
     // urlAuthorize option and generates and applies any necessary parameters
@@ -79,44 +84,43 @@ img{
         <h2 style="font-family: 'Pacifico', cursive;">Oauth authenticated msgBoard</h2>
         <img class="img-responsive" src="./circle-cropped.png" alt="oauth2logo">
     </div>
-    <div class="col-12 d-flex flex-row-reverse mt-2"><form method="POST" action="client.php" ><input type="hidden" name="logout"><button type="submit">Logout</button></form></div>
+    <div class="col-12 d-flex flex-row-reverse mt-2"><form method="POST" action="client.php" ><input type="hidden" name="logout" value="true"><button type="submit">Logout</button></form></div>
 </div>
 
 
 
 <?php
-if (isset($_POST['logout'])) {
-    session_destroy();
-}
 
-try {
-        if (!isset($_SESSION["accessToken"])) {
-            //  No saved access token, getting one
-            $accessToken = $provider->getAccessToken('authorization_code', ["code" => $_GET["code"]]);
-            $_SESSION["accessToken"] = $accessToken;
-        } else {
-            // Token already set
-            $accessToken = $_SESSION["accessToken"];
-        }
+        try {
+            if (!isset($_SESSION["accessToken"])) {
+                //  No saved access token, getting one
+                $accessToken = $provider->getAccessToken('authorization_code', ["code" => $_GET["code"]]);
+                $_SESSION["accessToken"] = $accessToken;
+            } else {
+                // Token already set
+                $accessToken = $_SESSION["accessToken"];
+            }
 
-        $request = $provider->getAuthenticatedRequest(
-            'POST',
-            'http://localhost/oauth/oauth_server/resource_server/read',
-            $accessToken
-        );
-
-        $client = new GuzzleHttp\Client();
-        //Making a request to the Resource server API using access token
-        $response = json_decode((string) $client->send($request)->getBody());
-        var_dump($response);
-        if ($response) {
-            $msgRequest = $provider->getAuthenticatedRequest(
+            $request = $provider->getAuthenticatedRequest(
                 'POST',
-                'http://localhost/oauth/oauth_server/resource_server/get_messages',
+                'http://localhost/oauth/oauth_server/resource_server/read',
                 $accessToken
             );
-            $msgResponse = json_decode((string) $client->send($msgRequest)->getBody());
-            echo "
+
+            $client = new GuzzleHttp\Client();
+            //Making a request to the Resource server API using access token
+            $response = json_decode((string) $client->send($request)->getBody());
+            var_dump($response);
+
+            //should this be awaited?
+            if ($response) {
+                $msgRequest = $provider->getAuthenticatedRequest(
+                    'POST',
+                    'http://localhost/oauth/oauth_server/resource_server/get_messages',
+                    $accessToken
+                );
+                $msgResponse = json_decode((string) $client->send($msgRequest)->getBody());
+                echo "
             <div class='row mt-2'>
             <div class='col-6 text-success'><span>User Authenticated -> $response->email </div>
             <div class='col-6 text-warning text-right'>Token Expires " . date('M d Y H:i:s', $accessToken->getExpires()) . "
@@ -126,9 +130,9 @@ try {
             <div class='col-12'>
             <div class='msg-board-wrapper mt-5 mb-5 p-1'>
             ";
-            // echo "msgResponse: ".var_dump($msgResponse);
-            if ($msgResponse) {
-                foreach ($msgResponse as $msg) {echo "
+                // echo "msgResponse: ".var_dump($msgResponse);
+                if ($msgResponse) {
+                    foreach ($msgResponse as $msg) {echo "
                 <div class='col-12 p-3'>
                 <div class='row justify-content-between pb-2 text-info'>
                     <div class='user'>
@@ -145,12 +149,12 @@ try {
                 </div>
                 </div>
                 ";
+                    }
+                    ;
+
                 }
                 ;
-
-            }
-            ;
-            echo "
+                echo "
         </div>
         </div>
         </div>
@@ -166,37 +170,55 @@ try {
         </div>
         </div>
         "; //name of textarea declared as array 'message[]'
-            if (isset($_POST['message'])) {
-                $msg = $_POST['message'];
-                echo $msg;
-                // var_dump($msgArray);
-                $setMsg = $provider->getAuthenticatedRequest(
-                    'POST',
-                    'http://localhost/oauth/oauth_server/resource_server/set_message',
-                    $accessToken,
-                    ['form_fields' => ['message' => $msg]]
-                );
-                var_dump($setMsg);
-                $client->send($setMsg);
+                if (isset($_POST['message'])) {
+                    $msg = $_POST['message'];
+                    // echo $msg; //just to show vars value
+                    // var_dump($msgArray);
+                    $setMsg = $provider->getAuthenticatedRequest(
+                        'POST',
+                        'http://localhost/oauth/oauth_server/resource_server/set_message',
+                        $accessToken
+                    );
 
+                    // $modRequest = $setMsg->modify_request([
+                    //     "body"=>"message=".$msg
+                    // ]); // didnt work as guzzle is set to client // Call to undefined method GuzzleHttp\Psr7\Request::modify_request() in C:\xampp\htdocs\oauth\random_client\client.php on line 183
+                    
+                    $modRequest = \GuzzleHttp\Psr7\modify_request( $setMsg,[
+                        "body"=>"message=".$msg
+                    ]);
+
+                    // $response = $client->send($setMsg, ['form_fields' => ['message' => $msg]]); // cant send post data this way
+
+                    // $client->setBody(['message' => $msg]); // didnt work
+
+                    // $client->setPostField('message', $msg); // didnt work
+
+
+
+                    // $response = json_decode($client->send($modRequest)->getBody());
+                    echo "var dump";
+                    var_dump($client->send($modRequest)->getBody());
+                    // echo "response" . $response;
+                    // header('Location: http://localhost/oauth/random_client/client.php');
+                    // var_dump($response);
+                };
+
+                // echo "<div class='row'><div class='col-12'>Response " . (string) $client->send($request)->getBody(); //this showed error in full, previously truncated in catch.. access token was being denied by resource server.
+                // var_dump($response);
+            } else {
+                echo "Something went wrong";
             }
-            ;
+        } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
 
-            // echo "<div class='row'><div class='col-12'>Response " . (string) $client->send($request)->getBody(); //this showed error in full, previously truncated in catch.. access token was being denied by resource server.
-            // var_dump($response);
-        } else {
-            echo "Something went wrong";
+            echo "league exception" . $e->getMessage();
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+
+            echo "guzzle exception" . $e->getResponse()->getBody()->getContents();
+
         }
-    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
-
-        echo "league exception" . $e->getMessage();
-
-    } catch (\GuzzleHttp\Exception\ClientException $e) {
-
-        echo "guzzle exception" . $e->getResponse()->getBody()->getContents();
-
-    }
-    ?>
+        ?>
   <!-- \League\OAuth2\Client\Provider\Exception\IdentityProviderException -->
 
 </div>
@@ -205,4 +227,5 @@ try {
 </html>
 <?php
 }
+
 ?>
